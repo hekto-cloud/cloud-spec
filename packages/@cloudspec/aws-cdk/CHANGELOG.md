@@ -1,5 +1,11 @@
 # @cloudspec/aws-cdk
 
+## 0.2.0
+
+### Minor Changes
+
+- 30f7fc7: something changed, just a test
+
 ## 0.0.11
 
 ### Patch Changes
