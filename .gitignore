@@ -2,7 +2,7 @@ node_modules
 **/*.js
 dist
 .turbo
-!jest.config.js
+!vitest.config.js
 **/outputs.json
 .cloud-spec
 **/*tfstate

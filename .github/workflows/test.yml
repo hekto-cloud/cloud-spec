@@ -11,38 +11,35 @@ jobs:
       name: Build and Test
       timeout-minutes: 15
       runs-on: ubuntu-latest
-      # These permissions are needed to interact with GitHub's OIDC Token endpoint.
       permissions:
         id-token: write
         contents: read
       strategy:
         matrix:
-          node-version: [16]
+          node-version: [18, 20]
 
       steps:
         - name: Check out code
-          uses: actions/checkout@v3
-          with:
-            fetch-depth: 2
+          uses: actions/checkout@v4
 
-        - uses: pnpm/action-setup@v2.0.1
+        - uses: pnpm/action-setup@v2
           with:
-            version: 7
+            version: 8
 
         - name: Use Node.js ${{ matrix.node-version }}
-          uses: actions/setup-node@v3
+          uses: actions/setup-node@v4
           with:
             node-version: ${{ matrix.node-version }}
             cache: 'pnpm'
 
         - name: Install dependencies
-          run: pnpm install
+          run: pnpm install --frozen-lockfile
 
         - name: Build
           run: pnpm build
 
-        - name: Configure AWS credentials from Test account
-          uses: aws-actions/configure-aws-credentials@v1
+        - name: Configure AWS credentials
+          uses: aws-actions/configure-aws-credentials@v4
           with:
             role-session-name: cloud-spec-tests
             role-to-assume: ${{ secrets.ROLE_TO_ASSUME }}

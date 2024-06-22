@@ -1,5 +1,5 @@
 {
-  "name": "@cloudspec/aws-cdk",
+  "name": "@cloudspec/aws-matcher",
   "version": "0.1.0",
   "description": "",
   "main": "lib/index.js",
@@ -11,7 +11,7 @@
     "build": "tsc --outDir dist",
     "dev": "tsc --outDir dist --watch",
     "test": "vitest run --coverage",
-    "test:destroy": "CLOUDSPEC_DESTROY_AFTER_TEST=true vitest run"
+    "test:destroy": "vitest run"
   },
   "repository": {
     "url": "https://github.com/cloudspec-dev/cloudspec.git"
@@ -23,20 +23,19 @@
   },
   "license": "Apache-2.0",
   "devDependencies": {
+    "@aws-sdk/client-s3": "^3.600.0",
+    "@aws-sdk/client-sfn": "^3.600.0",
+    "@types/diff": "^5.2.1",
     "@types/node": "^18.11.9",
-    "@vitest/coverage-v8": "^1.6.0",
-    "aws-cdk": "^2.145.0",
-    "aws-cdk-lib": "^2.145.0",
-    "constructs": "^10.3.0",
     "typescript": "^5.4.5",
     "vitest": "^1.6.0"
   },
   "peerDependencies": {
-    "aws-cdk-lib": "^2.0.0",
-    "constructs": "^10.0.0",
+    "@aws-sdk/client-s3": "3",
+    "@aws-sdk/client-sfn": "3",
     "vitest": "^1.6"
   },
   "dependencies": {
-    "@aws-cdk/cli-lib-alpha": "2.147.0-alpha.0"
+    "diff": "^5.2.0"
   }
 }

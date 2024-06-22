@@ -1,4 +1,2 @@
-tsconfig.jsii.json
-tsconfig.tsbuildinfo
-.jsii
-**/*.d.ts
+!vitest.config.js
+coverage

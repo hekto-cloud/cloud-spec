@@ -7,5 +7,5 @@
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": ["@cloudspec/test-aws-cdk", "@cloudspec/test-terraform", "@cloudspec/test-cdktf"]
+  "ignore": []
 }

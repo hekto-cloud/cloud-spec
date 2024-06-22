@@ -7,16 +7,17 @@
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "release": "pnpm build && changeset publish",
-    "prettier-format": "prettier --config .prettierrc 'packages/**/*.ts' 'test/**/*.ts' --write"
+    "prettier-format": "prettier --config .prettierrc 'packages/**/*.ts' 'test/**/*.ts' --write",
+    "clean": "turbo run clean && rm -rf node_modules"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.25.2",
-    "eslint": "^8.28.0",
-    "eslint-config-prettier": "8.5.0",
-    "eslint-plugin-prettier": "4.2.1",
-    "prettier": "^2.8.0",
-    "turbo": "^1.6.3"
+    "@changesets/cli": "^2.27.5",
+    "eslint": "^9.5.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.1.3",
+    "prettier": "^3.3.2",
+    "turbo": "1"
   },
   "author": "Sebastian Korfmann",
-  "license": "MPL-2.0"
+  "license": "Apache-2.0"
 }

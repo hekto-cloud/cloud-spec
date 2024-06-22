@@ -1,7 +1,8 @@
-import { cloudSpec } from '../lib';
+import { cloudSpec } from '@cloudspec/aws-cdk';
+import '@cloudspec/aws-matcher';
 import { Stack } from 'aws-cdk-lib';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
-import { describe, expect, it } from 'vitest';
+import { describe, expect } from 'vitest';
 
 const cloud = cloudSpec();
 
@@ -15,6 +16,6 @@ describe('S3 Bucket Tests', () => {
 
   cloud.test('bucket should exist', async (outputs) => {
     const { bucketName } = outputs;
-    expect(bucketName).toEqual(expect.stringMatching(/testbucket/))
+    await expect({ bucketName, key: 'my-object' }).not.toExistInS3();
   });
 })

@@ -1,0 +1,4 @@
+tsconfig.jsii.json
+tsconfig.tsbuildinfo
+.jsii
+**/*.d.ts

@@ -1,9 +1,0 @@
-{
-  "name": "@examples/python-simple",
-  "version": "0.0.0",
-  "license": "MPL-2.0",
-  "scripts": {
-    "reinstall": "rm Pipfile.lock && PIPENV_IGNORE_VIRTUALENVS=1 pipenv install ../../../dist/python/*.whl",
-    "test": "pipenv run python3 test.py"
-  }
-}
