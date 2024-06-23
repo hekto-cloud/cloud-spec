@@ -1,5 +1,11 @@
 # @cloudspec/aws-cdk
 
+## 0.2.1
+
+### Patch Changes
+
+- cf18b11: fix packaging
+
 ## 0.2.0
 
 ### Minor Changes
