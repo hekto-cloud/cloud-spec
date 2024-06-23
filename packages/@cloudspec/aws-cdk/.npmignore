@@ -7,9 +7,13 @@ tsconfig.json
 !*.js
 !*.d.ts
 
-# Exclude jsii outdir
-dist
-
 # Include .jsii and .jsii.gz
 !.jsii
 !.jsii.gz
+vitest.config.js
+node_modules
+test
+.turbo
+coverage
+*-outputs.json
+*.tgz

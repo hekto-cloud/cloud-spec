@@ -2,8 +2,8 @@
   "name": "@cloudspec/aws-matcher",
   "version": "0.2.0",
   "description": "",
-  "main": "lib/index.js",
-  "types": "lib/index.d.ts",
+  "main": "dist/lib/index.js",
+  "types": "dist/lib/index.d.ts",
   "publishConfig": {
     "access": "public"
   },
