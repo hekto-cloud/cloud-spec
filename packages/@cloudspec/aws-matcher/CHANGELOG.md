@@ -1,5 +1,11 @@
 # @cloudspec/aws-matcher
 
+## 0.3.2
+
+### Patch Changes
+
+- 7b3bf54: fixes
+
 ## 0.3.1
 
 ### Patch Changes
