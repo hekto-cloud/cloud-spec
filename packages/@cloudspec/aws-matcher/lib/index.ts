@@ -1,6 +1,6 @@
 import { expect } from 'vitest';
 import { S3Client, HeadObjectCommand, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
-import { SFNClient, StartExecutionCommand, DescribeExecutionCommand } from "@aws-sdk/client-sfn";
+import { SFNClient, StartExecutionCommand, DescribeExecutionCommand, DescribeStateMachineCommand, StartSyncExecutionCommand } from "@aws-sdk/client-sfn";
 import { Upload } from "@aws-sdk/lib-storage";
 import { Readable } from "stream";
 
@@ -130,7 +130,47 @@ const customMatchers = {
     const { input, timeout = 60000, result: expectedResult } = properties || {};
     const startTime = Date.now();
 
-    // Start the execution
+    // Check if the state machine is Standard or Express
+    let isExpress = false;
+    try {
+      const describeStateMachineCommand = new DescribeStateMachineCommand({ stateMachineArn });
+      const stateMachineDetails = await sfnClient.send(describeStateMachineCommand);
+      isExpress = stateMachineDetails.type === 'EXPRESS';
+    } catch (error) {
+      return {
+        message: () => `Failed to describe Step Functions state machine: ${error}`,
+        pass: false,
+      };
+    }
+
+    if (isExpress) {
+      // For Express workflows, use synchronous execution
+      const startSyncCommand = new StartSyncExecutionCommand({
+        stateMachineArn: stateMachineArn,
+        input: input ? JSON.stringify(input) : undefined
+      });
+
+      try {
+        const syncResponse = await sfnClient.send(startSyncCommand);
+        const actualResult = JSON.parse(syncResponse.output || '{}');
+        const pass = JSON.stringify(actualResult) === JSON.stringify(expectedResult);
+        return {
+          message: () => pass
+            ? `Express Step Functions execution completed successfully and result matches expected`
+            : `Express Step Functions execution completed successfully but result does not match expected`,
+          pass,
+          actual: actualResult,
+          expected: expectedResult,
+        };
+      } catch (error) {
+        return {
+          message: () => `Express Step Functions execution failed: ${error}`,
+          pass: false,
+        };
+      }
+    }
+
+    // For Standard workflows, use asynchronous execution and polling
     const startCommand = new StartExecutionCommand({
       stateMachineArn: stateMachineArn,
       input: input ? JSON.stringify(input) : undefined
@@ -142,13 +182,14 @@ const customMatchers = {
       executionArn = startResponse.executionArn!;
     } catch (error) {
       return {
-        message: () => `Failed to start Step Functions execution: ${error}`,
+        message: () => `Failed to start Standard Step Functions execution: ${error}`,
         pass: false,
       };
     }
 
     console.log(`Step Functions execution URL: ${getStepFunctionsConsoleUrl(executionArn)}`);
 
+    // Polling loop for Standard workflows
     while (true) {
       const { status, output } = await sfnClient.send(new DescribeExecutionCommand({ executionArn }));
 
@@ -159,8 +200,8 @@ const customMatchers = {
           const pass = JSON.stringify(actualResult) === JSON.stringify(expectedResult);
           return {
             message: () => pass
-              ? `Step Functions execution completed successfully and result matches expected`
-              : `Step Functions execution completed successfully but result does not match expected`,
+              ? `Standard Step Functions execution completed successfully and result matches expected`
+              : `Standard Step Functions execution completed successfully but result does not match expected`,
             pass,
             actual: actualResult,
             expected: expectedResult,
@@ -168,21 +209,21 @@ const customMatchers = {
         }
 
         return {
-          message: () => `Step Functions execution completed successfully`,
+          message: () => `Standard Step Functions execution completed successfully`,
           pass: true,
         };
       }
 
       if (['FAILED', 'TIMED_OUT', 'ABORTED'].includes(status!)) {
         return {
-          message: () => `Step Functions execution failed with status: ${status}. View details at the URL printed above.`,
+          message: () => `Standard Step Functions execution failed with status: ${status}. View details at the URL printed above.`,
           pass: false,
         };
       }
 
       if (Date.now() - startTime > timeout) {
         return {
-          message: () => `Step Functions execution timed out after ${timeout}ms. Current status: ${status}. View details at the URL printed above.`,
+          message: () => `Standard Step Functions execution timed out after ${timeout}ms. Current status: ${status}. View details at the URL printed above.`,
           pass: false,
         };
       }

@@ -2,7 +2,7 @@ import { cloudSpec } from '@cloudspec/aws-cdk';
 import { describe, expect } from 'vitest';
 import { Stack } from 'aws-cdk-lib';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
-import { StateMachine, Pass } from 'aws-cdk-lib/aws-stepfunctions';
+import { StateMachine, Pass, StateMachineType } from 'aws-cdk-lib/aws-stepfunctions';
 import '@cloudspec/aws-matcher';
 
 const cloud = cloudSpec();
@@ -45,6 +45,30 @@ describe('Step Function Tests', () => {
     await expect(stateMachineArn)
       .toCompleteStepFunctionsExecution({ result: {
         hello: 'world'
+      }});
+  });
+});
+
+describe('Express Step Function Tests', () => {
+  cloud.setup((stack: Stack, setOutputs) => {
+    const expressSfn = new StateMachine(stack, 'ExpressStateMachine', {
+      stateMachineType: StateMachineType.EXPRESS,
+      definition: new Pass(stack, 'ExpressHelloWorldPass', {
+        result: { value: { hello: 'express world' } },
+      }),
+    });
+
+    setOutputs({
+      expressStateMachineArn: expressSfn.stateMachineArn,
+    });
+  });
+
+  cloud.test('express state machine should return hello express world', async (outputs) => {
+    const { expressStateMachineArn } = outputs;
+
+    await expect(expressStateMachineArn)
+      .toCompleteStepFunctionsExecution({ result: {
+        hello: 'express world'
       }});
   });
 });
