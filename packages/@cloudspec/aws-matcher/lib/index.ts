@@ -1,7 +1,6 @@
 import { expect } from 'vitest';
 import { S3Client, HeadObjectCommand, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { SFNClient, StartExecutionCommand, DescribeExecutionCommand } from "@aws-sdk/client-sfn";
-import * as diff from 'diff';
 import { Upload } from "@aws-sdk/lib-storage";
 import { Readable } from "stream";
 
@@ -11,14 +10,16 @@ declare module 'vitest' {
     toHaveKey(properties: { key: string }): Promise<void>;
     toCreateObject(properties: { key: string, body: string | Buffer | Readable }): Promise<void>;
     toMatchS3ObjectSnapshot(properties: { key: string }): Promise<void>;
-    toCompleteStepFunctionsExecution(payload: any, timeout?: number): Promise<void>;
+    toCompleteStepFunctionsExecution(properties?: { input?: any, timeout?: number, result?: any }): Promise<{ pass: boolean; message: () => string; actual?: any; expected?: any }>;
   }
 }
 
-// Define a type for the matcher result
+// Update the MatcherResult type
 type MatcherResult = {
   pass: boolean;
   message: () => string;
+  actual?: any;
+  expected?: any;
 };
 
 const region = process.env.AWS_REGION || 'us-east-1';
@@ -35,24 +36,6 @@ function getStepFunctionsConsoleUrl(executionArn: string): string {
     console.error('Error parsing execution ARN:', executionArn, error);
     return 'Unable to generate Step Functions console URL';
   }
-}
-
-function createColorfulDiff(actual: string, expected: string): string {
-  const differences = diff.diffLines(expected, actual);
-  let colorfulDiff = '';
-
-  differences.forEach((part) => {
-    // Green for additions, red for deletions
-    // If the value is unchanged, it will be grey
-    const color = part.added ? '\x1b[32m' : part.removed ? '\x1b[31m' : '\x1b[90m';
-    const prefix = part.added ? '+' : part.removed ? '-' : ' ';
-    const lines = part.value.split('\n').filter(line => line.trim() !== '');
-    lines.forEach(line => {
-      colorfulDiff += `${color}${prefix} ${line}\x1b[0m\n`;
-    });
-  });
-
-  return colorfulDiff;
 }
 
 // Custom matchers
@@ -127,17 +110,11 @@ const customMatchers = {
           pass: true,
         };
       } catch (error: any) {
-        // Extract the diff from the error message
-        const actualContent = error.actual;
-        const expectedContent = error.expected;
-
-        // Create a colorful diff
-        const colorfulDiff = createColorfulDiff(actualContent, expectedContent);
-
         return {
-          message: () =>
-            `Snapshot for ${key} in S3 bucket ${bucketName} did not match.\n\nDiff:\n${colorfulDiff}`,
+          message: () => `Snapshot for ${key} in S3 bucket ${bucketName} did not match.`,
           pass: false,
+          actual: content,
+          expected: error.expected,
         };
       }
     } catch (error) {
@@ -148,14 +125,15 @@ const customMatchers = {
     }
   },
 
-  async toCompleteStepFunctionsExecution(received: string, payload: any, timeout: number = 60000): Promise<MatcherResult & { result: any | null }> {
+  async toCompleteStepFunctionsExecution(received: string, properties?: { input?: any, timeout?: number, result?: any }): Promise<{ pass: boolean; message: () => string; actual?: any; expected?: any }> {
     const stateMachineArn = received;
+    const { input, timeout = 60000, result: expectedResult } = properties || {};
     const startTime = Date.now();
 
     // Start the execution
     const startCommand = new StartExecutionCommand({
       stateMachineArn: stateMachineArn,
-      input: JSON.stringify(payload)
+      input: input ? JSON.stringify(input) : undefined
     });
 
     let executionArn: string;
@@ -166,7 +144,6 @@ const customMatchers = {
       return {
         message: () => `Failed to start Step Functions execution: ${error}`,
         pass: false,
-        result: null,
       };
     }
 
@@ -176,10 +153,23 @@ const customMatchers = {
       const { status, output } = await sfnClient.send(new DescribeExecutionCommand({ executionArn }));
 
       if (status === 'SUCCEEDED') {
+        const actualResult = JSON.parse(output || '{}');
+
+        if (expectedResult !== undefined) {
+          const pass = JSON.stringify(actualResult) === JSON.stringify(expectedResult);
+          return {
+            message: () => pass
+              ? `Step Functions execution completed successfully and result matches expected`
+              : `Step Functions execution completed successfully but result does not match expected`,
+            pass,
+            actual: actualResult,
+            expected: expectedResult,
+          };
+        }
+
         return {
           message: () => `Step Functions execution completed successfully`,
           pass: true,
-          result: JSON.parse(output || '{}'),
         };
       }
 
@@ -187,7 +177,6 @@ const customMatchers = {
         return {
           message: () => `Step Functions execution failed with status: ${status}. View details at the URL printed above.`,
           pass: false,
-          result: null,
         };
       }
 
@@ -195,7 +184,6 @@ const customMatchers = {
         return {
           message: () => `Step Functions execution timed out after ${timeout}ms. Current status: ${status}. View details at the URL printed above.`,
           pass: false,
-          result: null,
         };
       }
 
