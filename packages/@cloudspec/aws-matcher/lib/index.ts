@@ -7,19 +7,19 @@ import { Readable } from "stream";
 
 // Update the type declaration
 declare module 'vitest' {
-  interface AsymmetricMatchersContaining {
-    toExistInS3(): any;
-    toPutObjectInS3(): any;
-    toMatchS3Snapshot(): any;
-    toCompleteStepFunctionsExecution(payload: any, timeout?: number): Promise<{ pass: boolean; result: any }>;
-  }
   interface Assertion<T = any> {
-    toExistInS3(): Promise<void>;
-    toPutObjectInS3(): Promise<void>;
-    toMatchS3Snapshot(): Promise<void>;
-    toCompleteStepFunctionsExecution(payload: any, timeout?: number): Promise<{ pass: boolean; result: any }>;
+    toHaveKey(properties: { key: string }): Promise<void>;
+    toCreateObject(properties: { key: string, body: string | Buffer | Readable }): Promise<void>;
+    toMatchS3ObjectSnapshot(properties: { key: string }): Promise<void>;
+    toCompleteStepFunctionsExecution(payload: any, timeout?: number): Promise<void>;
   }
 }
+
+// Define a type for the matcher result
+type MatcherResult = {
+  pass: boolean;
+  message: () => string;
+};
 
 const region = process.env.AWS_REGION || 'us-east-1';
 const sfnClient = new SFNClient({ region });
@@ -57,24 +57,27 @@ function createColorfulDiff(actual: string, expected: string): string {
 
 // Custom matchers
 const customMatchers = {
-  async toExistInS3(received: { bucketName: string, key: string }) {
-    const headCommand = new HeadObjectCommand({ Bucket: received.bucketName, Key: received.key });
+  async toHaveKey(received: string, properties: { key: string }): Promise<MatcherResult> {
+    const { key } = properties;
+    const bucketName = received;
+    const headCommand = new HeadObjectCommand({ Bucket: bucketName, Key: key });
     try {
       await s3Client.send(headCommand);
       return {
-        message: () => `expected ${received.key} to exist in S3 bucket ${received.bucketName}`,
+        message: () => `expected ${key} to exist in S3 bucket ${bucketName}`,
         pass: true,
       };
     } catch (error) {
       return {
-        message: () => `expected ${received.key} to exist in S3 bucket ${received.bucketName}`,
+        message: () => `expected ${key} to exist in S3 bucket ${bucketName}`,
         pass: false,
       };
     }
   },
 
-  async toPutObjectInS3(received: { bucketName: string; key: string; body: string | Buffer | Readable }) {
-    const { bucketName, key, body } = received;
+  async toCreateObject(received: string, properties: { key: string, body: string | Buffer | Readable }): Promise<MatcherResult> {
+    const { key, body } = properties;
+    const bucketName = received;
     const s3Client = new S3Client({});
 
     try {
@@ -91,25 +94,27 @@ const customMatchers = {
 
       return {
         pass: true,
-        message: () => `Successfully put object with key ${key} in bucket ${bucketName}`,
+        message: () => `Successfully created object with key ${key} in bucket ${bucketName}`,
       };
     } catch (error) {
       return {
         pass: false,
-        message: () => `Failed to put object with key ${key} in bucket ${bucketName}: ${error}`,
+        message: () => `Failed to create object with key ${key} in bucket ${bucketName}: ${error}`,
       };
     }
   },
 
-  async toMatchS3Snapshot(received: { bucketName: string, key: string }) {
-    const getCommand = new GetObjectCommand({ Bucket: received.bucketName, Key: received.key });
+  async toMatchS3ObjectSnapshot(received: string, properties: { key: string }): Promise<MatcherResult> {
+    const { key } = properties;
+    const bucketName = received;
+    const getCommand = new GetObjectCommand({ Bucket: bucketName, Key: key });
     try {
       const response = await s3Client.send(getCommand);
       const content = await response.Body?.transformToString();
 
       if (content === undefined) {
         return {
-          message: () => `failed to retrieve content from ${received.key} in S3 bucket ${received.bucketName}`,
+          message: () => `failed to retrieve content from ${key} in S3 bucket ${bucketName}`,
           pass: false,
         };
       }
@@ -118,7 +123,7 @@ const customMatchers = {
       try {
         expect(content).toMatchSnapshot();
         return {
-          message: () => `expected ${received.key} content to match snapshot in S3 bucket ${received.bucketName}`,
+          message: () => `expected ${key} content to match snapshot in S3 bucket ${bucketName}`,
           pass: true,
         };
       } catch (error: any) {
@@ -131,19 +136,20 @@ const customMatchers = {
 
         return {
           message: () =>
-            `Snapshot for ${received.key} in S3 bucket ${received.bucketName} did not match.\n\nDiff:\n${colorfulDiff}`,
+            `Snapshot for ${key} in S3 bucket ${bucketName} did not match.\n\nDiff:\n${colorfulDiff}`,
           pass: false,
         };
       }
     } catch (error) {
       return {
-        message: () => `failed to retrieve ${received.key} from S3 bucket ${received.bucketName}: ${error}`,
+        message: () => `failed to retrieve ${key} from S3 bucket ${bucketName}: ${error}`,
         pass: false,
       };
     }
   },
 
-  async toCompleteStepFunctionsExecution(stateMachineArn: string, payload: any, timeout: number = 60000) {
+  async toCompleteStepFunctionsExecution(received: string, payload: any, timeout: number = 60000): Promise<MatcherResult & { result: any | null }> {
+    const stateMachineArn = received;
     const startTime = Date.now();
 
     // Start the execution

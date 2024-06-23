@@ -36,6 +36,7 @@
     "vitest": "^1.6"
   },
   "dependencies": {
+    "@aws-sdk/lib-storage": "^3.600.0",
     "diff": "^5.2.0"
   }
 }

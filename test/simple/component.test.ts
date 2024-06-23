@@ -18,8 +18,9 @@ describe('S3 Bucket Tests', () => {
     const { bucketName } = outputs;
     const key = `test-object-${Date.now()}`;
     const object = { bucketName, key };
-    await expect(object).not.toExistInS3();
-    await expect({ ...object, content: 'hello' }).toPutObjectInS3();
-    await expect(object).toExistInS3();
+    await expect(bucketName).not.toHaveKey({ key });
+    await expect(bucketName).toCreateObject({ key, body: 'hello' });
+    await expect(bucketName).toHaveKey({ key });
+    await expect(bucketName).toMatchS3ObjectSnapshot({ key });
   });
 })
