@@ -7,4 +7,4 @@ dist
 .cloud-spec
 **/*tfstate
 **/*tfstate*
-*-outputs.json
+**/*-outputs.json

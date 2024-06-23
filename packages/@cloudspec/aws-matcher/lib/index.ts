@@ -1,19 +1,23 @@
 import { expect } from 'vitest';
-import { S3Client, HeadObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, HeadObjectCommand, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { SFNClient, StartExecutionCommand, DescribeExecutionCommand } from "@aws-sdk/client-sfn";
 import * as diff from 'diff';
+import { Upload } from "@aws-sdk/lib-storage";
+import { Readable } from "stream";
 
 // Update the type declaration
 declare module 'vitest' {
   interface AsymmetricMatchersContaining {
     toExistInS3(): any;
+    toPutObjectInS3(): any;
     toMatchS3Snapshot(): any;
-    toCompleteStepFunctionsExecution(payload: any, timeout?: number): any;
+    toCompleteStepFunctionsExecution(payload: any, timeout?: number): Promise<{ pass: boolean; result: any }>;
   }
   interface Assertion<T = any> {
     toExistInS3(): Promise<void>;
+    toPutObjectInS3(): Promise<void>;
     toMatchS3Snapshot(): Promise<void>;
-    toCompleteStepFunctionsExecution(payload: any, timeout?: number): Promise<void>;
+    toCompleteStepFunctionsExecution(payload: any, timeout?: number): Promise<{ pass: boolean; result: any }>;
   }
 }
 
@@ -65,6 +69,34 @@ const customMatchers = {
       return {
         message: () => `expected ${received.key} to exist in S3 bucket ${received.bucketName}`,
         pass: false,
+      };
+    }
+  },
+
+  async toPutObjectInS3(received: { bucketName: string; key: string; body: string | Buffer | Readable }) {
+    const { bucketName, key, body } = received;
+    const s3Client = new S3Client({});
+
+    try {
+      const upload = new Upload({
+        client: s3Client,
+        params: {
+          Bucket: bucketName,
+          Key: key,
+          Body: body,
+        },
+      });
+
+      await upload.done();
+
+      return {
+        pass: true,
+        message: () => `Successfully put object with key ${key} in bucket ${bucketName}`,
+      };
+    } catch (error) {
+      return {
+        pass: false,
+        message: () => `Failed to put object with key ${key} in bucket ${bucketName}: ${error}`,
       };
     }
   },
@@ -128,18 +160,20 @@ const customMatchers = {
       return {
         message: () => `Failed to start Step Functions execution: ${error}`,
         pass: false,
+        result: null,
       };
     }
 
     console.log(`Step Functions execution URL: ${getStepFunctionsConsoleUrl(executionArn)}`);
 
     while (true) {
-      const { status } = await sfnClient.send(new DescribeExecutionCommand({ executionArn }));
+      const { status, output } = await sfnClient.send(new DescribeExecutionCommand({ executionArn }));
 
       if (status === 'SUCCEEDED') {
         return {
           message: () => `Step Functions execution completed successfully`,
           pass: true,
+          result: JSON.parse(output || '{}'),
         };
       }
 
@@ -147,6 +181,7 @@ const customMatchers = {
         return {
           message: () => `Step Functions execution failed with status: ${status}. View details at the URL printed above.`,
           pass: false,
+          result: null,
         };
       }
 
@@ -154,6 +189,7 @@ const customMatchers = {
         return {
           message: () => `Step Functions execution timed out after ${timeout}ms. Current status: ${status}. View details at the URL printed above.`,
           pass: false,
+          result: null,
         };
       }
 
