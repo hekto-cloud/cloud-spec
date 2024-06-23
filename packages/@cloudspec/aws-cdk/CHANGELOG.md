@@ -1,5 +1,11 @@
 # @cloudspec/aws-cdk
 
+## 0.3.0
+
+### Minor Changes
+
+- ab0e61b: adjust interfaces for matchers
+
 ## 0.2.2
 
 ### Patch Changes
