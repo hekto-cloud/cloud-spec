@@ -1,5 +1,11 @@
 # @cloudspec/aws-cdk
 
+## 0.2.2
+
+### Patch Changes
+
+- 587199c: esm compatibility for vitest
+
 ## 0.2.1
 
 ### Patch Changes
