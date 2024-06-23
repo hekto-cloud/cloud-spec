@@ -28,10 +28,18 @@ const s3Client = new S3Client({ region });
 
 function getStepFunctionsConsoleUrl(executionArn: string): string {
   try {
-    const [, , , region] = executionArn.split(':');
+    const [, , , region, accountId, executionType, ...rest] = executionArn.split(':');
     const baseUrl = `https://${region}.console.aws.amazon.com/states/home`;
     const params = new URLSearchParams({ region });
-    return `${baseUrl}?${params.toString()}#/v2/executions/details/${executionArn}`;
+
+    if (executionType === 'express') {
+      const [stateMachineName, executionId, runId] = rest;
+      const startDate = Date.now(); // You might want to pass this as a parameter if you need a specific start date
+      return `${baseUrl}?${params.toString()}#/express-executions/details/${executionArn}?startDate=${startDate}`;
+    } else {
+      // Standard execution
+      return `${baseUrl}?${params.toString()}#/v2/executions/details/${executionArn}`;
+    }
   } catch (error) {
     console.error('Error parsing execution ARN:', executionArn, error);
     return 'Unable to generate Step Functions console URL';
@@ -152,15 +160,33 @@ const customMatchers = {
 
       try {
         const syncResponse = await sfnClient.send(startSyncCommand);
+        console.log(`Step Functions execution URL: ${getStepFunctionsConsoleUrl(syncResponse.executionArn!)}`);
+
+        if (syncResponse.status === 'FAILED') {
+          return {
+            message: () => `Express Step Functions execution failed`,
+            pass: false,
+            actual: syncResponse.output,
+          };
+        }
+
         const actualResult = JSON.parse(syncResponse.output || '{}');
-        const pass = JSON.stringify(actualResult) === JSON.stringify(expectedResult);
+        if (expectedResult !== undefined) {
+          const pass = JSON.stringify(actualResult) === JSON.stringify(expectedResult);
+          return {
+            message: () => pass
+              ? `Express Step Functions execution completed successfully and result matches expected`
+              : `Express Step Functions execution completed successfully but result does not match expected`,
+            pass,
+            actual: actualResult,
+            expected: expectedResult,
+          };
+        }
+
         return {
-          message: () => pass
-            ? `Express Step Functions execution completed successfully and result matches expected`
-            : `Express Step Functions execution completed successfully but result does not match expected`,
-          pass,
+          message: () => `Express Step Functions execution completed successfully`,
+          pass: true,
           actual: actualResult,
-          expected: expectedResult,
         };
       } catch (error) {
         return {
@@ -180,14 +206,13 @@ const customMatchers = {
     try {
       const startResponse = await sfnClient.send(startCommand);
       executionArn = startResponse.executionArn!;
+      console.log(`Step Functions execution URL: ${getStepFunctionsConsoleUrl(executionArn)}`);
     } catch (error) {
       return {
         message: () => `Failed to start Standard Step Functions execution: ${error}`,
         pass: false,
       };
     }
-
-    console.log(`Step Functions execution URL: ${getStepFunctionsConsoleUrl(executionArn)}`);
 
     // Polling loop for Standard workflows
     while (true) {
