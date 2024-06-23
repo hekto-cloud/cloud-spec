@@ -1,5 +1,11 @@
 # @cloudspec/aws-matcher
 
+## 0.3.1
+
+### Patch Changes
+
+- f2b4a98: sfn express
+
 ## 0.3.0
 
 ### Minor Changes
