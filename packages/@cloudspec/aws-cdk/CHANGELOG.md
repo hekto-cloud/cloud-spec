@@ -1,5 +1,11 @@
 # @cloudspec/aws-cdk
 
+## 0.4.0
+
+### Minor Changes
+
+- 7e0989e: compose toolkit with standard matchers from vite
+
 ## 0.3.0
 
 ### Minor Changes

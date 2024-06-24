@@ -1,6 +1,6 @@
 {
   "name": "@cloudspec/aws-toolkit",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "description": "",
   "main": "dist/lib/index.js",
   "types": "dist/lib/index.d.ts",
