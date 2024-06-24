@@ -55,7 +55,7 @@ importers:
         specifier: ^1.6.0
         version: 1.6.0(@types/node@18.19.39)
 
-  packages/@cloudspec/aws-matcher:
+  packages/@cloudspec/aws-toolkit:
     dependencies:
       '@aws-sdk/lib-storage':
         specifier: ^3.600.0
@@ -94,9 +94,9 @@ importers:
       '@cloudspec/aws-cdk':
         specifier: workspace:*
         version: link:../packages/@cloudspec/aws-cdk
-      '@cloudspec/aws-matcher':
+      '@cloudspec/aws-toolkit':
         specifier: workspace:*
-        version: link:../packages/@cloudspec/aws-matcher
+        version: link:../packages/@cloudspec/aws-toolkit
       aws-cdk:
         specifier: ^2.147.0
         version: 2.147.0

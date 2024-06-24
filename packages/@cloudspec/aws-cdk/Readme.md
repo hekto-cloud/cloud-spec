@@ -19,7 +19,7 @@ npm install @cloudspec/aws-cdk
 ## Requirements
 
 - Vitest (tested with version 1.6)
-- A Vitest configuration file (e.g., `vitest.config.js`) with the following settings:
+- A Vitest configuration file (e.g., `vitest.config.mjs`) with the following settings:
 
 ```javascript
 import { defineConfig } from 'vitest/config'

@@ -3,7 +3,7 @@ import { describe, expect } from 'vitest';
 import { Stack } from 'aws-cdk-lib';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { StateMachine, Pass, StateMachineType } from 'aws-cdk-lib/aws-stepfunctions';
-import '@cloudspec/aws-matcher';
+import { s3, stepFunctions } from '@cloudspec/aws-toolkit';
 
 const cloud = cloudSpec();
 
@@ -18,13 +18,21 @@ describe('S3 Bucket Tests', () => {
   cloud.test('bucket should exist', async (outputs) => {
     const { bucketName } = outputs;
     const key = `test-object-${Date.now()}`;
-    const object = { bucketName, key };
-    await expect(bucketName).not.toHaveKey({ key })
-    await expect(bucketName).toCreateObject({ key, body: 'hello' });
-    await expect(bucketName).toHaveKey({ key });
-    await expect(bucketName).toMatchS3ObjectSnapshot({ key });
+
+    // Check that the object doesn't exist initially
+    expect(await s3.objectExists({ bucketName, key })).toBe(false);
+
+    // Create the object
+    expect(await s3.createObject({ bucketName, key, body: 'hello' })).toBe(true);
+
+    // Check that the object now exists
+    expect(await s3.objectExists({ bucketName, key })).toBe(true);
+
+    // Check the object content
+    const content = await s3.getObjectContent({ bucketName, key });
+    expect(content).toBe('hello');
   });
-})
+});
 
 describe('Step Function Tests', () => {
   cloud.setup((stack: Stack, setOutputs) => {
@@ -42,10 +50,9 @@ describe('Step Function Tests', () => {
   cloud.test('state machine should return hello world', async (outputs) => {
     const { stateMachineArn } = outputs;
 
-    await expect(stateMachineArn)
-      .toCompleteStepFunctionsExecution({ result: {
-        hello: 'world'
-      }});
+    const result = await stepFunctions.execute({ stateMachineArn });
+    expect(result.status).toBe('SUCCEEDED');
+    expect(result.output).toEqual({ hello: 'world' });
   });
 });
 
@@ -66,9 +73,8 @@ describe('Express Step Function Tests', () => {
   cloud.test('express state machine should return hello express world', async (outputs) => {
     const { expressStateMachineArn } = outputs;
 
-    await expect(expressStateMachineArn)
-      .toCompleteStepFunctionsExecution({ result: {
-        hello: 'express world'
-      }});
+    const result = await stepFunctions.execute({ stateMachineArn: expressStateMachineArn });
+    expect(result.status).toBe('SUCCEEDED');
+    expect(result.output).toEqual({ hello: 'express world' });
   });
 });
